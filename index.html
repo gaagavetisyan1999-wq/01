@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TikTok — Get Coins</title>
+<style>
+  :root{
+    --bg:#f7f7f8;
+    --card:#ffffff;
+    --muted:#6b7280;
+    --accent:#fe2c55;
+    --gold1:#f6c84c;
+    --gold2:#d49a12;
+    --success:#22c55e;
+    --coin-rate:0.012; /* $ per coin */
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;box-sizing:border-box;padding-bottom:env(safe-area-inset-bottom);display:flex;flex-direction:column}
+  .wrap{max-width:420px;margin:0 auto;width:100%;padding:16px;box-sizing:border-box;flex:1;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:6px}
+  header img.logo{height:30px}
+  h1{font-size:20px;margin:0;font-weight:800;display:flex;gap:6px;align-items:center}
+  h1 .tiktok{color:#000} h1 .get{color:var(--accent)}
+
+  /* payment logos strip */
+  .payment-strip{display:flex;gap:12px;justify-content:center;align-items:center;margin:12px 0 8px}
+  .payment-strip img{height:22px;object-fit:contain;filter:grayscale(0);opacity:0.95}
+
+  /* card area */
+  .content{background:transparent;padding:4px 0 12px;flex:1;display:flex;flex-direction:column}
+  label{font-size:13px;color:var(--muted);font-weight:600;margin:12px 4px 6px 2px;text-align:left}
+  .input{display:flex;align-items:center;border-radius:12px;background:var(--card);padding:8px 10px;border:1px solid #e6e6e9;box-shadow:0 4px 10px rgba(10,10,10,0.03)}
+  .input input{border:0;outline:0;font-size:16px;width:100%}
+
+  /* coins grid */
+  .coins-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+  .coin{background:var(--card);border-radius:12px;padding:10px 8px;box-shadow:0 6px 18px rgba(2,6,23,0.05);border:1px solid rgba(0,0,0,0.03);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:transform .12s ease,box-shadow .12s}
+  .coin:hover{transform:translateY(-4px)}
+  .coin.active{box-shadow:0 12px 30px rgba(2,6,23,0.09);border-color:rgba(212,154,18,0.15)}
+  .coin .amount{font-weight:700;font-size:15px}
+  .coin .price{font-size:12px;color:var(--muted);margin-top:6px}
+
+  /* coin svg small */
+  .coin svg{height:18px;width:18px;display:block;margin-bottom:6px}
+
+  /* custom inline */
+  .coin.custom{padding:8px 6px}
+  .coin.custom input{border:0;outline:0;font-weight:700;text-align:center;width:100%;font-size:15px}
+
+  /* payment strip above button */
+  .footer-strip{margin-top:12px;display:flex;flex-direction:column;gap:8px;align-items:center}
+
+  /* button */
+  .recharge-wrap{padding:10px 0 18px}
+  .recharge{width:100%;background:var(--accent);color:#fff;border:0;border-radius:14px;padding:14px;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 10px 30px rgba(254,44,85,0.12)}
+  .recharge:active{transform:translateY(1px)}
+
+  /* popup base */
+  .backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:120}
+  .modal{width:92%;max-width:360px;background:var(--card);border-radius:16px;padding:18px;box-shadow:0 30px 80px rgba(2,6,23,0.2);transform:translateY(-20px);opacity:0;animation:modalIn .28s forwards}
+  @keyframes modalIn{to{transform:none;opacity:1}}
+
+  /* card number row */
+  .card-row{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:12px}
+  .card-num{font-weight:700;letter-spacing:2px;color:#222;font-size:18px}
+  .card-row img{height:20px}
+
+  .method-row{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:14px}
+  .method-left{display:flex;align-items:center;gap:8px}
+  .method-left img{height:20px}
+  .method-left span{font-weight:600}
+  select{padding:9px;border-radius:10px;border:1px solid #e6e6e9;font-size:15px}
+
+  .confirm{width:100%;padding:12px;border-radius:12px;background:var(--accent);color:#fff;border:0;font-weight:800;cursor:pointer}
+
+  /* loading modal */
+  .loading-circle{width:56px;height:56px;border-radius:50%;border:6px solid #eee;border-top-color:var(--accent);animation:spin 1s linear infinite;margin:8px auto 10px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* success modal */
+  .success-badge{width:86px;height:86px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;color:#fff;font-size:44px;margin:0 auto 12px;box-shadow:0 10px 30px rgba(34,197,94,0.18);transform:scale(.9);animation:pop .36s cubic-bezier(.2,1,0.3,1) forwards}
+  @keyframes pop{to{transform:scale(1)}}
+  .success-text{font-weight:700;font-size:16px;margin-bottom:8px}
+
+  /* responsive */
+  @media (max-width:460px){
+    .coins-grid{grid-template-columns:repeat(2,1fr)}
+    h1{font-size:18px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+  <div class="wrap" role="main">
+    <header>
+      <img class="logo" src="https://upload.wikimedia.org/wikipedia/en/0/0a/TikTok_logo.svg" alt="TikTok logo">
+      <h1><span class="tiktok">TikTok</span>&nbsp;<span class="get">Get Coins</span></h1>
+    </header>
+
+    <!-- top payment logos -->
+    <div class="payment-strip" aria-hidden="true">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Visa.svg" alt="Visa">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" alt="Apple">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google">
+    </div>
+
+    <div class="content">
+      <label for="username">Username</label>
+      <div class="input" style="margin-bottom:6px">
+        <input id="username" type="text" placeholder="Enter username (e.g. @alex_123)" autocomplete="username">
+      </div>
+
+      <!-- coins -->
+      <div class="coins-grid" id="coins">
+        <!-- coins will be rendered by JS -->
+      </div>
+
+      <!-- payment logos above button -->
+      <div class="footer-strip">
+        <div class="payment-strip" aria-hidden="true">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Visa.svg" alt="Visa">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" alt="Apple">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google">
+        </div>
+      </div>
+    </div>
+
+    <div class="recharge-wrap">
+      <button class="recharge" id="rechargeBtn">Recharge</button>
+    </div>
+  </div>
+
+  <!-- Payment modal -->
+  <div class="backdrop" id="payModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="payTitle">
+      <div id="payTitle" style="font-weight:800;margin-bottom:8px">Payment</div>
+
+      <div class="card-row">
+        <div class="card-num" id="cardNumber">**** **** **** 7586</div>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Visa.svg" alt="Visa">
+      </div>
+
+      <div class="applepay">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" alt="Apple Pay">
+        <span style="font-weight:700">Apple Pay</span>
+      </div>
+
+      <div class="method-row">
+        <div class="method-left">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="">
+          <span>Pay method</span>
+        </div>
+        <select id="payMethod">
+          <option>Visa</option>
+          <option>MasterCard</option>
+          <option>Apple Pay</option>
+          <option>Google Pay</option>
+        </select>
+      </div>
+
+      <button class="confirm" id="confirmPay">Recharge Now</button>
+    </div>
+  </div>
+
+  <!-- Loading modal -->
+  <div class="backdrop" id="loadingModal" aria-hidden="true">
+    <div class="modal" role="status" aria-live="polite">
+      <div class="loading-circle" aria-hidden="true"></div>
+      <div style="font-weight:700;margin-top:6px">Processing Payment...</div>
+    </div>
+  </div>
+
+  <!-- Success modal -->
+  <div class="backdrop" id="successModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="success-badge">✓</div>
+      <div class="success-text">Payment Completed</div>
+      <div style="color:var(--muted);font-size:14px;margin-bottom:12px">Coins will be added soon.</div>
+      <button class="confirm" onclick="closeSuccess()">OK</button>
+    </div>
+  </div>
+
+<script>
+/* Data + render coins with price = amount * rate ($) */
+const COINS = [30,350,700,1400,3500,7000,17500];
+const RATE = 0.012; // $ per coin
+
+const coinsGrid = document.getElementById('coins');
+let selected = null;
+
+// create inline SVG coin icon
+function coinSVG(){
+  return `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--gold1') || '#f6c84c'}"/><stop offset="1" stop-color="${getComputedStyle(document.documentElement).getPropertyValue('--gold2') || '#d49a12'}"/></linearGradient></defs>
+    <circle cx="12" cy="12" r="10" fill="url(#g)" stroke="#d49a12" stroke-width="0.6"/>
+    <text x="12" y="15" text-anchor="middle" font-size="10" font-weight="700" fill="#6b3f00">$</text>
+  </svg>`;
+}
+
+function formatPrice(coins){ return '$' + (Math.round(coins * RATE * 100) / 100).toFixed(2); }
+
+function renderCoins(){
+  coinsGrid.innerHTML = '';
+  COINS.forEach(num=>{
+    const el = document.createElement('button');
+    el.className = 'coin';
+    el.type = 'button';
+    el.dataset.amount = num;
+    el.innerHTML = coinSVG() + `<div class="amount">${num}</div><div class="price">${formatPrice(num)}</div>`;
+    el.addEventListener('click', ()=>selectCoin(el,num));
+    coinsGrid.appendChild(el);
+  });
+  // custom inline block
+  const custom = document.createElement('div');
+  custom.className = 'coin custom';
+  custom.id = 'custom';
+  custom.innerHTML = coinSVG() + `<input type="number" id="customInput" min="1" placeholder="Custom">`;
+  coinsGrid.appendChild(custom);
+  // custom input listeners
+  document.getElementById('customInput').addEventListener('input', e=>{
+    const v = parseInt(e.target.value,10);
+    if(!v || v <= 0){ selected = null; custom.classList.remove('active'); return; }
+    selected = v;
+    document.querySelectorAll('.coin').forEach(c=>c.classList.remove('active'));
+    custom.classList.add('active');
+  });
+}
+
+function selectCoin(el,num){
+  selected = num;
+  document.querySelectorAll('.coin').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  // clear custom input if clicked a fixed coin
+  const ci = document.getElementById('customInput'); if(ci) ci.value = '';
+}
+
+renderCoins();
+
+/* Buttons and modals */
+const rechargeBtn = document.getElementById('rechargeBtn');
+const usernameInput = document.getElementById('username');
+const payModal = document.getElementById('payModal');
+const loadingModal = document.getElementById('loadingModal');
+const successModal = document.getElementById('successModal');
+const confirmPay = document.getElementById('confirmPay');
+
+rechargeBtn.addEventListener('click', ()=>{
+  const username = usernameInput.value.trim();
+  if(!username){ alert('Please enter a username'); usernameInput.focus(); return; }
+  if(!selected){ alert('Please select or enter coin amount'); return; }
+  // show payment modal
+  payModal.style.display = 'flex';
+  payModal.setAttribute('aria-hidden','false');
+});
+
+// confirm -> loading -> success
+confirmPay.addEventListener('click', ()=>{
+  payModal.style.display = 'none';
+  loadingModal.style.display = 'flex';
+  loadingModal.setAttribute('aria-hidden','false');
+
+  // simulate processing + then success
+  setTimeout(()=>{
+    loadingModal.style.display = 'none';
+    loadingModal.setAttribute('aria-hidden','true');
+    // show success
+    successModal.style.display = 'flex';
+    successModal.setAttribute('aria-hidden','false');
+  }, 3000);
+});
+
+function closeSuccess(){
+  successModal.style.display = 'none';
+  successModal.setAttribute('aria-hidden','true');
+}
+
+/* close on outside click */
+window.addEventListener('click', (e)=>{
+  if(e.target === payModal){ payModal.style.display='none'; payModal.setAttribute('aria-hidden','true'); }
+  if(e.target === loadingModal){ /* ignore clicking outside while loading */ }
+  if(e.target === successModal){ successModal.style.display='none'; successModal.setAttribute('aria-hidden','true'); }
+});
+
+/* accessibility: ESC to close modals */
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape'){
+    [payModal, loadingModal, successModal].forEach(m=>m.style.display='none');
+  }
+});
+</script>
+</body>
+</html>
